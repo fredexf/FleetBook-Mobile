@@ -1,4 +1,4 @@
-const CACHE='fleetbook-cloud-v2-1';
+const CACHE='fleetbook-cloud-v3';
 const ASSETS=[
   './',
   './index.html',

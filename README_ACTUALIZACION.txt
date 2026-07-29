@@ -1,17 +1,17 @@
-FleetBook Cloud v2.1 — corrección de instalación PWA
+FleetBook Cloud v3
 
-Reemplazar en la raíz del repositorio:
-- index.html
-- manifest.webmanifest
-- sw.js
+Novedades:
+- Interpretación local de entradas en lenguaje natural.
+- Bandeja de pendientes en español.
+- Pantalla editable de revisión.
+- Confirmación crea el mantenimiento oficial.
+- Actualización automática del kilometraje si corresponde.
+- Posibilidad de descartar entradas.
 
-Agregar:
-- icon-192.png
-- icon-512.png
+Instalación:
+1. Subir y reemplazar todos los archivos en la raíz del repositorio FleetBook-Mobile.
+2. Confirmar el commit.
+3. Abrir la app instalada y cerrarla/abrirla para recibir la actualización.
+4. Si no actualiza, borrar datos del sitio o desinstalar y volver a instalar.
 
-Mantener:
-- icon.svg
-
-Después del commit, esperar la publicación de GitHub Pages, borrar los datos/caché
-del sitio en el teléfono y volver a abrir:
-https://fredexf.github.io/FleetBook-Mobile/
+No requiere ejecutar SQL adicional.

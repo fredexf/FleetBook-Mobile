@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "FleetBook Cloud",
+  "name": "FleetBook Cloud v3",
   "short_name": "FleetBook",
-  "description": "Gestión inteligente de mantenimiento de flota",
+  "description": "Gestión inteligente y confirmación de mantenimientos de flota",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

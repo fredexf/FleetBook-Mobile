@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
-<title>FleetBook Cloud</title>
+<title>FleetBook Cloud v3</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <style>
-:root{--bg:#f8fafc;--card:#fff;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--accent:#2563eb;--bad:#b91c1c}
+:root{--bg:#f8fafc;--card:#fff;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--accent:#2563eb;--bad:#b91c1c;--good:#15803d;--warn:#b45309}
 *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:var(--bg);color:var(--ink)}
 header{background:#0f172a;color:#fff;padding:16px;position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center}
 header h1{font-size:19px;margin:0} main{max-width:900px;margin:auto;padding:16px 14px 90px}
@@ -22,12 +22,12 @@ label{display:block;font-weight:700;font-size:13px;margin:10px 0 5px} textarea{m
 nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr)}
 nav button{background:#fff;color:#334155;border-radius:0;padding:13px 4px;font-size:12px} nav button.active{color:var(--accent);background:#eff6ff}
 dialog{border:0;border-radius:18px;width:min(94vw,580px);padding:0} dialog::backdrop{background:#0f172a99} .body{padding:18px}
-.notice{background:#eff6ff;color:#1e3a8a;padding:12px;border-radius:12px;margin-bottom:12px} .error{background:#fee2e2;color:#991b1b}
+.notice{background:#eff6ff;color:#1e3a8a;padding:12px;border-radius:12px;margin-bottom:12px} .error{background:#fee2e2;color:#991b1b}.success{background:#dcfce7;color:#166534}.warning{background:#ffedd5;color:#9a3412}.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:800;background:#ffedd5;color:#9a3412}.entry-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.entry-card{border-left:5px solid #f59e0b}.confirmed-card{border-left:5px solid #22c55e}.small{font-size:12px}.review-grid{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}@media(max-width:520px){.review-grid{grid-template-columns:1fr}}
 table{width:100%;border-collapse:collapse;font-size:14px} th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line)}
 </style>
 </head>
 <body>
-<header><div><h1>FleetBook Cloud</h1><small id="sessionLabel">Sin conexión</small></div><button id="logoutBtn" class="secondary hidden">Salir</button></header>
+<header><div><h1>FleetBook Cloud <small style="font-size:11px;opacity:.75">v3</small></h1><small id="sessionLabel">Sin conexión</small></div><button id="logoutBtn" class="secondary hidden">Salir</button></header>
 
 <main>
 <section id="authView">
@@ -60,13 +60,13 @@ table{width:100%;border-collapse:collapse;font-size:14px} th,td{text-align:left;
  </section>
 
  <section id="assistantView" class="hidden">
-  <h2>Asistente</h2>
+  <div class="top"><h2>Asistente</h2><span id="pendingBadge" class="badge hidden"></span></div>
   <div class="card">
-   <p><strong>Entrada natural</strong></p>
-   <p class="muted">Esta pantalla ya guarda mensajes para la futura interpretación automática. En la próxima versión conectaremos fotos y audios con IA.</p>
-   <label>Contame qué trabajo se hizo</label>
-   <textarea id="assistantText" placeholder="Ej.: Hoy cambié aceite y filtros de la SW4 a los 258.430 km."></textarea>
-   <button style="margin-top:12px" onclick="saveAssistantEntry()">Guardar entrada</button>
+   <p><strong>Registrar con lenguaje natural</strong></p>
+   <p class="muted">Escribí el trabajo realizado. FleetBook preparará una ficha editable antes de incorporarla al historial.</p>
+   <label>¿Qué trabajo se hizo?</label>
+   <textarea id="assistantText" placeholder="Ej.: Hoy cambié aceite de motor y filtro de aceite de la SW4 a los 258.430 km."></textarea>
+   <button id="assistantSaveBtn" style="margin-top:12px" onclick="saveAssistantEntry()">Interpretar entrada</button>
   </div>
   <div id="assistantEntries"></div>
  </section>
@@ -96,10 +96,23 @@ table{width:100%;border-collapse:collapse;font-size:14px} th,td{text-align:left;
 <label>Taller / proveedor</label><input id="mWorkshop"><button style="margin-top:12px">Guardar mantenimiento</button>
 </form></dialog>
 
+<dialog id="reviewDialog"><form id="reviewForm" class="body">
+<div class="top"><div><h3 style="margin-bottom:2px">Confirmar mantenimiento</h3><span class="muted small">Revisá y corregí los datos detectados</span></div><button type="button" class="secondary" onclick="reviewDialog.close()">Cerrar</button></div>
+<input type="hidden" id="rEntryId">
+<label>Texto original</label><div id="rRawText" class="notice"></div>
+<label>Vehículo</label><select id="rVehicle" required></select>
+<div class="review-grid"><div><label>Fecha</label><input id="rDate" type="date" required></div><div><label>Kilometraje</label><input id="rKm" type="number" min="0"></div></div>
+<label>Trabajo realizado</label><input id="rTitle" required>
+<label>Descripción / detalle</label><textarea id="rDescription"></textarea>
+<div class="review-grid"><div><label>Costo total</label><input id="rCost" type="number" min="0" step="0.01"></div><div><label>Moneda</label><input id="rCurrency" value="ARS"></div></div>
+<label>Taller / proveedor</label><input id="rWorkshop">
+<div class="entry-actions"><button type="submit">Confirmar y guardar</button><button type="button" class="danger" onclick="rejectCurrentEntry()">Descartar entrada</button></div>
+</form></dialog>
+
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const supabase=createClient('https://ymisrxstkfleodimztja.supabase.co','sb_publishable_qrfOIyy7HrlyHPTchxUa5Q_5DOI6RQS');
-let session=null,fleetId=null,vehiclesData=[],eventsData=[],schedulesData=[];
+let session=null,fleetId=null,vehiclesData=[],eventsData=[],schedulesData=[],assistantData=[];
 
 const $=id=>document.getElementById(id);
 function msg(text,bad=false){$('authMsg').innerHTML=text?`<div class="notice ${bad?'error':''}">${text}</div>`:''}
@@ -129,8 +142,8 @@ async function loadAll(){
   supabase.from('assistant_entries').select('*').eq('fleet_id',fleetId).order('created_at',{ascending:false}).limit(20)
  ]);
  for(const r of [v,e,s,a])if(r.error)console.error(r.error);
- vehiclesData=v.data||[]; eventsData=e.data||[]; schedulesData=s.data||[];
- render(a.data||[]);
+ vehiclesData=v.data||[]; eventsData=e.data||[]; schedulesData=s.data||[]; assistantData=a.data||[];
+ render(assistantData);
 }
 function render(entries){
  const total=eventsData.reduce((a,x)=>a+Number(x.total_cost||0),0);
@@ -140,7 +153,14 @@ function render(entries){
  $('vehicles').innerHTML=vehiclesData.map(v=>`<div class="card vehicle"><div><h3>${esc(v.nickname)}</h3><p>${esc(v.make||'')} ${esc(v.model||'')} ${v.model_year||''}</p><p class="muted">${Number(v.current_odometer_km||0).toLocaleString('es-AR')} km · VIN: ${esc(v.vin||'—')}</p></div><button class="secondary" onclick="openVehicle('${v.id}')">Editar</button></div>`).join('')||'<div class="card">Sin vehículos.</div>';
  $('history').innerHTML=eventsData.length?`<table><thead><tr><th>Fecha</th><th>Vehículo</th><th>Trabajo</th><th>Km</th><th>Costo</th></tr></thead><tbody>${eventsData.map(e=>`<tr><td>${fmtDate(e.event_date)}</td><td>${esc(vehiclesData.find(v=>v.id===e.vehicle_id)?.nickname||'—')}</td><td>${esc(e.title)}</td><td>${Number(e.odometer_km||0).toLocaleString('es-AR')}</td><td>${money(e.total_cost,e.currency)}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">Sin mantenimientos.</p>';
  $('upcoming').innerHTML=schedulesData.map(s=>`<p><strong>${esc(s.title)}</strong><br><span class="muted">${esc(vehiclesData.find(v=>v.id===s.vehicle_id)?.nickname||'')} · cada ${s.interval_km||'—'} km / ${s.interval_months||'—'} meses · ${esc(s.preferred_product||'')}</span></p>`).join('')||'<p class="muted">Sin planes activos.</p>';
- $('assistantEntries').innerHTML=entries.map(x=>`<div class="card"><strong>${new Date(x.created_at).toLocaleString('es-AR')}</strong><p>${esc(x.raw_text||x.transcript||'')}</p><span class="muted">Estado: ${esc(x.status)}</span></div>`).join('');
+ const pending=entries.filter(x=>x.status==='pending_confirmation');
+ $('pendingBadge').textContent=`${pending.length} pendiente${pending.length===1?'':'s'}`;
+ $('pendingBadge').classList.toggle('hidden',pending.length===0);
+ $('assistantEntries').innerHTML=entries.length?entries.map(x=>{
+   const isPending=x.status==='pending_confirmation';
+   const statusLabel=isPending?'Pendiente de confirmación':x.status==='confirmed'?'Confirmado':x.status==='rejected'?'Descartado':x.status;
+   return `<div class="card ${isPending?'entry-card':x.status==='confirmed'?'confirmed-card':''}"><div class="top"><strong>${new Date(x.created_at).toLocaleString('es-AR')}</strong><span class="badge">${esc(statusLabel)}</span></div><p>${esc(x.raw_text||x.transcript||'')}</p>${isPending?`<div class="entry-actions"><button onclick="openReview('${x.id}')">Revisar y confirmar</button><button class="secondary" onclick="rejectEntry('${x.id}')">Descartar</button></div>`:''}</div>`
+ }).join(''):'<div class="card"><p class="muted">Todavía no hay entradas.</p></div>';
  fillVehicles();
 }
 function fillVehicles(){$('mVehicle').innerHTML=vehiclesData.map(v=>`<option value="${v.id}">${esc(v.nickname)}</option>`).join('')}
@@ -149,7 +169,55 @@ window.openVehicle=id=>{const v=vehiclesData.find(x=>x.id===id)||{};$('vId').val
 $('vehicleForm').onsubmit=async e=>{e.preventDefault();const obj={fleet_id:fleetId,nickname:$('vNick').value,make:$('vMake').value,model:$('vModel').value,model_year:Number($('vYear').value)||null,current_odometer_km:Number($('vKm').value)||0,plate:$('vPlate').value,vin:$('vVin').value,engine:$('vEngine').value,notes:$('vNotes').value};let r=$('vId').value?await supabase.from('vehicles').update(obj).eq('id',$('vId').value):await supabase.from('vehicles').insert(obj);if(r.error)alert(r.error.message);else{vehicleDialog.close();await loadAll()}};
 window.openMaintenance=()=>{fillVehicles();$('mDate').value=new Date().toISOString().slice(0,10);maintenanceDialog.showModal()};
 $('maintenanceForm').onsubmit=async e=>{e.preventDefault();const obj={vehicle_id:$('mVehicle').value,event_date:$('mDate').value,odometer_km:Number($('mKm').value)||null,title:$('mTitle').value,description:$('mDescription').value,total_cost:Number($('mCost').value)||0,currency:$('mCurrency').value||'ARS',workshop:$('mWorkshop').value,status:'confirmed',source:'manual'};const r=await supabase.from('maintenance_events').insert(obj);if(r.error)alert(r.error.message);else{if(obj.odometer_km)await supabase.from('vehicles').update({current_odometer_km:obj.odometer_km}).eq('id',obj.vehicle_id);maintenanceDialog.close();$('maintenanceForm').reset();await loadAll()}};
-window.saveAssistantEntry=async()=>{const text=$('assistantText').value.trim();if(!text)return;const r=await supabase.from('assistant_entries').insert({fleet_id:fleetId,input_type:'text',raw_text:text,status:'pending_confirmation'});if(r.error)alert(r.error.message);else{$('assistantText').value='';await loadAll()}};
+function normalizeNumber(value){
+ if(!value)return null;
+ const digits=String(value).replace(/\D/g,'');
+ return digits?Number(digits):null;
+}
+function inferEntry(text){
+ const lower=text.toLocaleLowerCase('es');
+ const kmMatch=text.match(/(?:a\s+los\s+|con\s+|od[oó]metro\s*[:=]?\s*)?(\d{1,3}(?:[.\s]\d{3})+|\d{4,7})\s*(?:km|kil[oó]metros?)?/i);
+ const km=kmMatch?normalizeNumber(kmMatch[1]):null;
+ let vehicle=vehiclesData.find(v=>lower.includes(String(v.nickname||'').toLocaleLowerCase('es')))||vehiclesData[0]||null;
+ let title=text.trim().replace(/^(hoy|ayer)\s+/i,'').replace(/\s+a\s+los\s+[\d.\s]+\s*(?:km|kil[oó]metros?)?.*$/i,'').trim();
+ title=title.charAt(0).toUpperCase()+title.slice(1);
+ if(title.length>90) title=title.slice(0,87)+'…';
+ const yesterday=/\bayer\b/i.test(text); const d=new Date(); if(yesterday)d.setDate(d.getDate()-1);
+ return {vehicle_id:vehicle?.id||'',event_date:d.toISOString().slice(0,10),odometer_km:km,title:title||'Mantenimiento',description:text,total_cost:0,currency:'ARS',workshop:''};
+}
+window.saveAssistantEntry=async()=>{
+ const text=$('assistantText').value.trim(); if(!text)return;
+ const btn=$('assistantSaveBtn'); btn.disabled=true; btn.textContent='Interpretando…';
+ const extracted=inferEntry(text);
+ const {data,error}=await supabase.from('assistant_entries').insert({fleet_id:fleetId,vehicle_id:extracted.vehicle_id||null,input_type:'text',raw_text:text,extracted_data:extracted,status:'pending_confirmation'}).select().single();
+ btn.disabled=false; btn.textContent='Interpretar entrada';
+ if(error)alert(error.message);else{$('assistantText').value='';await loadAll();openReview(data.id)}
+};
+window.openReview=id=>{
+ const entry=assistantData.find(x=>x.id===id); if(!entry)return;
+ const data=Object.keys(entry.extracted_data||{}).length?entry.extracted_data:inferEntry(entry.raw_text||'');
+ $('rEntryId').value=entry.id; $('rRawText').textContent=entry.raw_text||entry.transcript||'';
+ $('rVehicle').innerHTML=vehiclesData.map(v=>`<option value="${v.id}">${esc(v.nickname)}</option>`).join('');
+ $('rVehicle').value=data.vehicle_id||entry.vehicle_id||vehiclesData[0]?.id||'';
+ $('rDate').value=data.event_date||new Date().toISOString().slice(0,10); $('rKm').value=data.odometer_km||'';
+ $('rTitle').value=data.title||'Mantenimiento'; $('rDescription').value=data.description||entry.raw_text||'';
+ $('rCost').value=data.total_cost||''; $('rCurrency').value=data.currency||'ARS'; $('rWorkshop').value=data.workshop||'';
+ reviewDialog.showModal();
+};
+window.rejectEntry=async id=>{if(!confirm('¿Descartar esta entrada?'))return;const r=await supabase.from('assistant_entries').update({status:'rejected'}).eq('id',id);if(r.error)alert(r.error.message);else await loadAll()};
+window.rejectCurrentEntry=()=>{const id=$('rEntryId').value;reviewDialog.close();rejectEntry(id)};
+$('reviewForm').onsubmit=async e=>{
+ e.preventDefault();
+ const entryId=$('rEntryId').value;
+ const event={vehicle_id:$('rVehicle').value,event_date:$('rDate').value,odometer_km:Number($('rKm').value)||null,title:$('rTitle').value.trim(),description:$('rDescription').value.trim(),total_cost:Number($('rCost').value)||0,currency:$('rCurrency').value.trim()||'ARS',workshop:$('rWorkshop').value.trim(),status:'confirmed',source:'assistant',raw_input:$('rRawText').textContent};
+ const {data,error}=await supabase.from('maintenance_events').insert(event).select().single();
+ if(error){alert(error.message);return}
+ const extracted={...event}; delete extracted.status; delete extracted.source; delete extracted.raw_input;
+ const update=await supabase.from('assistant_entries').update({vehicle_id:event.vehicle_id,extracted_data:extracted,status:'confirmed',resulting_event_id:data.id}).eq('id',entryId);
+ if(update.error){alert(update.error.message);return}
+ if(event.odometer_km){const v=vehiclesData.find(x=>x.id===event.vehicle_id);if(!v||Number(event.odometer_km)>Number(v.current_odometer_km||0))await supabase.from('vehicles').update({current_odometer_km:event.odometer_km}).eq('id',event.vehicle_id)}
+ reviewDialog.close(); await loadAll(); alert('Mantenimiento confirmado y agregado al historial.');
+};
 
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#appView>section').forEach(s=>s.classList.add('hidden'));$(b.dataset.view).classList.remove('hidden');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active')});
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js');
