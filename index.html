@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>FleetBook Mobile</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <style>
+    :root{
+      --bg:#f8fafc; --card:#fff; --ink:#0f172a; --muted:#64748b;
+      --line:#e2e8f0; --accent:#2563eb; --ok:#15803d; --warn:#b45309; --bad:#b91c1c;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+    header{position:sticky;top:0;z-index:5;background:#0f172a;color:white;padding:16px 18px;display:flex;justify-content:space-between;align-items:center}
+    header h1{font-size:19px;margin:0}
+    header small{opacity:.75}
+    main{max-width:900px;margin:auto;padding:16px 14px 90px}
+    .grid{display:grid;gap:12px}
+    .grid.cols{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(15,23,42,.05)}
+    .stat strong{font-size:26px;display:block}
+    h2,h3{margin:0 0 12px}
+    p{margin:6px 0}
+    .muted{color:var(--muted)}
+    button,.btn{border:0;border-radius:12px;padding:11px 14px;font-weight:700;cursor:pointer;background:var(--accent);color:white}
+    button.secondary,.btn.secondary{background:#e2e8f0;color:#0f172a}
+    button.danger{background:var(--bad)}
+    .actions{display:flex;flex-wrap:wrap;gap:8px}
+    label{display:block;font-size:13px;font-weight:700;margin:10px 0 5px}
+    input,select,textarea{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:10px;background:white;font:inherit}
+    textarea{min-height:78px}
+    .vehicle{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+    .pill{display:inline-block;padding:4px 9px;border-radius:999px;font-size:12px;font-weight:800}
+    .ok{background:#dcfce7;color:#166534}.warn{background:#fef3c7;color:#92400e}.bad{background:#fee2e2;color:#991b1b}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line);vertical-align:top}
+    nav{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);z-index:10;padding-bottom:env(safe-area-inset-bottom)}
+    nav button{background:white;color:#334155;border-radius:0;padding:12px 4px;font-size:12px}
+    nav button.active{color:var(--accent);background:#eff6ff}
+    .hidden{display:none!important}
+    dialog{border:0;border-radius:18px;width:min(94vw,560px);padding:0}
+    dialog::backdrop{background:rgba(15,23,42,.55)}
+    .dialog-body{padding:18px}
+    .topline{display:flex;justify-content:space-between;align-items:center}
+    .empty{text-align:center;padding:28px;color:var(--muted)}
+    .notice{padding:12px;border-radius:12px;background:#eff6ff;color:#1e3a8a;margin-bottom:12px}
+    @media (max-width:600px){ th:nth-child(4),td:nth-child(4){display:none} }
+  </style>
+</head>
+<body>
+<header>
+  <div><h1>FleetBook Mobile</h1><small>Seguimiento simple de flota</small></div>
+  <button class="secondary" id="installBtn" hidden>Instalar</button>
+</header>
+
+<main>
+  <section id="dashboardView">
+    <div class="notice">Tus datos se guardan en este dispositivo. Usá “Exportar respaldo” periódicamente.</div>
+    <div class="grid cols" id="stats"></div>
+    <div class="card" style="margin-top:12px">
+      <div class="topline"><h2>Próximos mantenimientos</h2><button onclick="openMaintenance()">+ Registrar</button></div>
+      <div id="upcoming"></div>
+    </div>
+  </section>
+
+  <section id="vehiclesView" class="hidden">
+    <div class="topline"><h2>Vehículos</h2><button onclick="openVehicle()">+ Agregar</button></div>
+    <div id="vehicleList" class="grid" style="margin-top:12px"></div>
+  </section>
+
+  <section id="historyView" class="hidden">
+    <div class="topline"><h2>Historial</h2><button onclick="openMaintenance()">+ Registrar</button></div>
+    <div class="card" style="margin-top:12px;overflow:auto"><div id="history"></div></div>
+  </section>
+
+  <section id="settingsView" class="hidden">
+    <h2>Datos y respaldo</h2>
+    <div class="card">
+      <p><strong>Exportar respaldo</strong></p>
+      <p class="muted">Descarga un archivo JSON con vehículos, servicios y vencimientos.</p>
+      <div class="actions">
+        <button onclick="exportData()">Exportar respaldo</button>
+        <label class="btn secondary" style="display:inline-block;margin:0">Importar respaldo
+          <input type="file" accept=".json,application/json" onchange="importData(event)" hidden>
+        </label>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <p><strong>Datos iniciales</strong></p>
+      <button class="danger" onclick="resetData()">Borrar todo</button>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button data-view="dashboardView" class="active">Inicio</button>
+  <button data-view="vehiclesView">Vehículos</button>
+  <button data-view="historyView">Historial</button>
+  <button data-view="settingsView">Respaldo</button>
+</nav>
+
+<dialog id="vehicleDialog">
+  <form method="dialog" class="dialog-body" id="vehicleForm">
+    <div class="topline"><h3>Vehículo</h3><button type="button" class="secondary" onclick="vehicleDialog.close()">Cerrar</button></div>
+    <input type="hidden" id="vehicleId">
+    <label>Nombre corto</label><input id="vehicleName" required placeholder="Ej.: SW4">
+    <label>Marca y modelo</label><input id="vehicleModel" required placeholder="Toyota SW4">
+    <div class="grid cols">
+      <div><label>Año</label><input id="vehicleYear" type="number"></div>
+      <div><label>Kilometraje actual</label><input id="vehicleKm" type="number" min="0"></div>
+    </div>
+    <label>Patente</label><input id="vehiclePlate">
+    <label>VIN / número de chasis</label><input id="vehicleVin">
+    <label>Motor</label><input id="vehicleEngine">
+    <label>Notas técnicas</label><textarea id="vehicleNotes"></textarea>
+    <div class="actions" style="margin-top:14px"><button type="submit">Guardar vehículo</button></div>
+  </form>
+</dialog>
+
+<dialog id="maintenanceDialog">
+  <form method="dialog" class="dialog-body" id="maintenanceForm">
+    <div class="topline"><h3>Registrar mantenimiento</h3><button type="button" class="secondary" onclick="maintenanceDialog.close()">Cerrar</button></div>
+    <label>Vehículo</label><select id="mVehicle" required></select>
+    <div class="grid cols">
+      <div><label>Fecha</label><input id="mDate" type="date" required></div>
+      <div><label>Kilometraje</label><input id="mKm" type="number" min="0" required></div>
+    </div>
+    <label>Trabajo realizado</label><input id="mTask" required placeholder="Cambio de aceite de transmisión">
+    <label>Repuestos / fluidos</label><textarea id="mParts" placeholder="Motul Gear 300 75W-90, 7 L"></textarea>
+    <div class="grid cols">
+      <div><label>Costo</label><input id="mCost" type="number" min="0" step="0.01"></div>
+      <div><label>Próximo cambio (km)</label><input id="mNextKm" type="number" min="0"></div>
+    </div>
+    <label>Próxima fecha</label><input id="mNextDate" type="date">
+    <label>Observaciones</label><textarea id="mNotes"></textarea>
+    <div class="actions" style="margin-top:14px"><button type="submit">Guardar mantenimiento</button></div>
+  </form>
+</dialog>
+
+<script>
+const KEY='fleetbook-v1';
+const seed={
+  vehicles:[{
+    id:crypto.randomUUID(), name:'SW4', model:'Toyota SW4', year:2001, km:250000,
+    plate:'', vin:'JTB11GNJ610069067', engine:'1KZ-TE 3.0 Turbo Diésel',
+    notes:'Preferencia: Motul Gear 300 75W-90 para caja, transfer y diferenciales.'
+  }],
+  maintenance:[],
+  recommendations:[{
+    id:crypto.randomUUID(), vehicleName:'SW4', task:'Cambio aceite caja, transfer y diferenciales',
+    fluid:'Motul Gear 300 75W-90', intervalKm:60000, intervalYears:5, status:'pendiente'
+  }]
+};
+let data=load();
+let deferredPrompt=null;
+
+function load(){
+  try{return JSON.parse(localStorage.getItem(KEY)) || structuredClone(seed)}
+  catch{return structuredClone(seed)}
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(data));render()}
+function money(v){return new Intl.NumberFormat('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}).format(v||0)}
+function fmtDate(s){if(!s)return '—'; return new Date(s+'T12:00:00').toLocaleDateString('es-AR')}
+function daysUntil(s){if(!s)return null; return Math.ceil((new Date(s+'T12:00:00')-new Date())/86400000)}
+function statusFor(item,vehicle){
+  const d=daysUntil(item.nextDate);
+  const kmLeft=item.nextKm ? item.nextKm-(vehicle?.km||0) : null;
+  if((d!==null&&d<0)||(kmLeft!==null&&kmLeft<0))return ['Vencido','bad'];
+  if((d!==null&&d<=60)||(kmLeft!==null&&kmLeft<=1000))return ['Próximo','warn'];
+  return ['Al día','ok'];
+}
+function render(){
+  const totalCost=data.maintenance.reduce((a,b)=>a+(Number(b.cost)||0),0);
+  const upcomingItems=data.maintenance.filter(x=>x.nextDate||x.nextKm);
+  document.querySelector('#stats').innerHTML=`
+    <div class="card stat"><span class="muted">Vehículos</span><strong>${data.vehicles.length}</strong></div>
+    <div class="card stat"><span class="muted">Servicios registrados</span><strong>${data.maintenance.length}</strong></div>
+    <div class="card stat"><span class="muted">Costo acumulado</span><strong>${money(totalCost)}</strong></div>`;
+  document.querySelector('#vehicleList').innerHTML=data.vehicles.length?data.vehicles.map(v=>`
+    <div class="card vehicle">
+      <div><h3>${esc(v.name)}</h3><p>${esc(v.model)} ${v.year||''}</p>
+      <p class="muted">${Number(v.km||0).toLocaleString('es-AR')} km · ${esc(v.plate||'Sin patente')}</p>
+      <p class="muted">VIN: ${esc(v.vin||'No cargado')}</p></div>
+      <div class="actions"><button class="secondary" onclick="openVehicle('${v.id}')">Editar</button>
+      <button class="danger" onclick="deleteVehicle('${v.id}')">Eliminar</button></div>
+    </div>`).join(''):'<div class="card empty">Todavía no hay vehículos.</div>';
+  const rows=[...data.maintenance].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  document.querySelector('#history').innerHTML=rows.length?`<table><thead><tr><th>Fecha</th><th>Vehículo</th><th>Trabajo</th><th>Km</th><th>Costo</th></tr></thead><tbody>${
+    rows.map(x=>`<tr><td>${fmtDate(x.date)}</td><td>${esc(vehicleName(x.vehicleId))}</td><td><strong>${esc(x.task)}</strong><br><span class="muted">${esc(x.parts||'')}</span></td><td>${Number(x.km||0).toLocaleString('es-AR')}</td><td>${money(x.cost)}</td></tr>`).join('')
+  }</tbody></table>`:'<div class="empty">Todavía no hay mantenimientos registrados.</div>';
+  document.querySelector('#upcoming').innerHTML=upcomingItems.length?upcomingItems.map(x=>{
+    const v=data.vehicles.find(v=>v.id===x.vehicleId); const [label,cls]=statusFor(x,v);
+    return `<div style="padding:12px 0;border-bottom:1px solid var(--line)">
+      <div class="vehicle"><div><strong>${esc(x.task)}</strong><p class="muted">${esc(v?.name||'Vehículo')} · ${x.nextKm?Number(x.nextKm).toLocaleString('es-AR')+' km':''} ${x.nextDate?'· '+fmtDate(x.nextDate):''}</p></div><span class="pill ${cls}">${label}</span></div>
+    </div>`}).join(''):'<div class="empty">No hay próximos servicios programados.</div>';
+  fillVehicleSelect();
+}
+function vehicleName(id){return data.vehicles.find(v=>v.id===id)?.name||'—'}
+function esc(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function openVehicle(id=''){
+  const v=data.vehicles.find(v=>v.id===id)||{};
+  vehicleId.value=v.id||''; vehicleName.value=v.name||''; vehicleModel.value=v.model||'';
+  vehicleYear.value=v.year||''; vehicleKm.value=v.km||''; vehiclePlate.value=v.plate||'';
+  vehicleVin.value=v.vin||''; vehicleEngine.value=v.engine||''; vehicleNotes.value=v.notes||'';
+  vehicleDialog.showModal();
+}
+vehicleForm.addEventListener('submit',e=>{
+  e.preventDefault();
+  const obj={id:vehicleId.value||crypto.randomUUID(),name:vehicleName.value.trim(),model:vehicleModel.value.trim(),
+    year:Number(vehicleYear.value)||null,km:Number(vehicleKm.value)||0,plate:vehiclePlate.value.trim(),
+    vin:vehicleVin.value.trim(),engine:vehicleEngine.value.trim(),notes:vehicleNotes.value.trim()};
+  const i=data.vehicles.findIndex(v=>v.id===obj.id); i>=0?data.vehicles[i]=obj:data.vehicles.push(obj);
+  save(); vehicleDialog.close(); vehicleForm.reset();
+});
+function deleteVehicle(id){
+  if(!confirm('¿Eliminar vehículo y sus mantenimientos?'))return;
+  data.vehicles=data.vehicles.filter(v=>v.id!==id); data.maintenance=data.maintenance.filter(m=>m.vehicleId!==id); save();
+}
+function fillVehicleSelect(){mVehicle.innerHTML=data.vehicles.map(v=>`<option value="${v.id}">${esc(v.name)} — ${esc(v.model)}</option>`).join('')}
+function openMaintenance(){
+  if(!data.vehicles.length){alert('Primero agregá un vehículo.');return}
+  fillVehicleSelect(); mDate.value=new Date().toISOString().slice(0,10); maintenanceDialog.showModal();
+}
+maintenanceForm.addEventListener('submit',e=>{
+  e.preventDefault();
+  const v=data.vehicles.find(v=>v.id===mVehicle.value);
+  const obj={id:crypto.randomUUID(),vehicleId:mVehicle.value,date:mDate.value,km:Number(mKm.value)||0,
+    task:mTask.value.trim(),parts:mParts.value.trim(),cost:Number(mCost.value)||0,
+    nextKm:Number(mNextKm.value)||null,nextDate:mNextDate.value||null,notes:mNotes.value.trim()};
+  data.maintenance.push(obj); if(v&&obj.km>v.km)v.km=obj.km; save(); maintenanceDialog.close(); maintenanceForm.reset();
+});
+function exportData(){
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`fleetbook-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href);
+}
+function importData(ev){
+  const f=ev.target.files[0]; if(!f)return;
+  const r=new FileReader();r.onload=()=>{try{data=JSON.parse(r.result);save();alert('Respaldo importado.')}catch{alert('Archivo inválido.')}};r.readAsText(f);
+}
+function resetData(){if(confirm('¿Borrar todos los datos?')){localStorage.removeItem(KEY);data=structuredClone(seed);save()}}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('main>section').forEach(s=>s.classList.add('hidden'));
+  document.getElementById(b.dataset.view).classList.remove('hidden');
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+});
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;installBtn.hidden=false});
+installBtn.onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;installBtn.hidden=true}};
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+render();
+</script>
+</body>
+</html>
