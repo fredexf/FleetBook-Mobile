@@ -1,12 +1,10 @@
-FleetBook Mobile
-================
-Aplicación web progresiva (PWA) para seguimiento de flota.
+FleetBook Cloud v2
 
-Uso rápido:
-1. Subir la carpeta completa a un hosting HTTPS (GitHub Pages, Netlify, Vercel, etc.).
-2. Abrir la URL desde el celular.
-3. En Android: menú del navegador > Instalar aplicación.
-4. En iPhone: Compartir > Agregar a pantalla de inicio.
+1. Subir index.html, manifest.webmanifest, sw.js e icon.svg a la raíz del repositorio GitHub Pages.
+2. Abrir la URL publicada.
+3. Crear cuenta con email y contraseña.
+4. Confirmar el email si Supabase lo solicita.
+5. Iniciar sesión. La función bootstrap_fleetbook cargará la SW4 inicial.
 
-Los datos se guardan localmente en el dispositivo.
-Use Exportar respaldo para descargar copias JSON periódicas.
+La URL y la publishable key son públicas por diseño. La seguridad de los datos depende de Supabase Auth y RLS.
+Nunca incluir una secret key o service_role en estos archivos.
