@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
-<title>FleetBook Cloud v3</title>
+<title>FleetBook Cloud v3.1</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <style>
@@ -17,6 +17,8 @@ header h1{font-size:19px;margin:0} main{max-width:900px;margin:auto;padding:16px
 button,.btn{border:0;border-radius:12px;padding:11px 14px;font-weight:700;background:var(--accent);color:#fff;cursor:pointer}
 .secondary{background:#e2e8f0;color:#0f172a} .danger{background:var(--bad)} input,textarea,select{width:100%;padding:11px;border:1px solid #cbd5e1;border-radius:10px;font:inherit}
 label{display:block;font-weight:700;font-size:13px;margin:10px 0 5px} textarea{min-height:80px}
+.media-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.media-actions button{width:100%}
+.media-status{margin-top:10px;font-size:13px}.media-preview{margin:10px 0;padding:10px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc}.media-preview img{width:100%;max-height:260px;object-fit:contain;border-radius:8px}.media-preview audio{width:100%}.recording{animation:pulse 1s infinite}@keyframes pulse{50%{opacity:.55}}
 .hidden{display:none!important} .muted{color:var(--muted)} .top{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap}
 .actions{display:flex;gap:8px;flex-wrap:wrap} .vehicle{display:flex;justify-content:space-between;gap:10px}
 nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr)}
@@ -65,8 +67,14 @@ table{width:100%;border-collapse:collapse;font-size:14px} th,td{text-align:left;
    <p><strong>Registrar con lenguaje natural</strong></p>
    <p class="muted">Escribí el trabajo realizado. FleetBook preparará una ficha editable antes de incorporarla al historial.</p>
    <label>¿Qué trabajo se hizo?</label>
-   <textarea id="assistantText" placeholder="Ej.: Hoy cambié aceite de motor y filtro de aceite de la SW4 a los 258.430 km."></textarea>
-   <button id="assistantSaveBtn" style="margin-top:12px" onclick="saveAssistantEntry()">Interpretar entrada</button>
+   <textarea id="assistantText" placeholder="Ej.: Hoy cambié aceite de motor y filtro de aceite de la SW4 a los 258.430 km. También podés agregar una nota antes de adjuntar una foto o audio."></textarea>
+   <button id="assistantSaveBtn" style="margin-top:12px" onclick="saveAssistantEntry()">Interpretar texto</button>
+   <div class="media-actions">
+    <button type="button" class="secondary" onclick="photoInput.click()">📷 Foto o cámara</button>
+    <button type="button" class="secondary" id="recordBtn" onclick="toggleRecording()">🎤 Grabar audio</button>
+   </div>
+   <input id="photoInput" class="hidden" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
+   <div id="mediaStatus" class="media-status muted"></div>
   </div>
   <div id="assistantEntries"></div>
  </section>
@@ -99,7 +107,7 @@ table{width:100%;border-collapse:collapse;font-size:14px} th,td{text-align:left;
 <dialog id="reviewDialog"><form id="reviewForm" class="body">
 <div class="top"><div><h3 style="margin-bottom:2px">Confirmar mantenimiento</h3><span class="muted small">Revisá y corregí los datos detectados</span></div><button type="button" class="secondary" onclick="reviewDialog.close()">Cerrar</button></div>
 <input type="hidden" id="rEntryId">
-<label>Texto original</label><div id="rRawText" class="notice"></div>
+<label>Entrada original</label><div id="rRawText" class="notice"></div><div id="rMediaPreview"></div>
 <label>Vehículo</label><select id="rVehicle" required></select>
 <div class="review-grid"><div><label>Fecha</label><input id="rDate" type="date" required></div><div><label>Kilometraje</label><input id="rKm" type="number" min="0"></div></div>
 <label>Trabajo realizado</label><input id="rTitle" required>
@@ -159,7 +167,8 @@ function render(entries){
  $('assistantEntries').innerHTML=entries.length?entries.map(x=>{
    const isPending=x.status==='pending_confirmation';
    const statusLabel=isPending?'Pendiente de confirmación':x.status==='confirmed'?'Confirmado':x.status==='rejected'?'Descartado':x.status;
-   return `<div class="card ${isPending?'entry-card':x.status==='confirmed'?'confirmed-card':''}"><div class="top"><strong>${new Date(x.created_at).toLocaleString('es-AR')}</strong><span class="badge">${esc(statusLabel)}</span></div><p>${esc(x.raw_text||x.transcript||'')}</p>${isPending?`<div class="entry-actions"><button onclick="openReview('${x.id}')">Revisar y confirmar</button><button class="secondary" onclick="rejectEntry('${x.id}')">Descartar</button></div>`:''}</div>`
+   const media=x.extracted_data?.media; const kind=x.input_type==='photo'?'📷 Foto':x.input_type==='audio'?'🎤 Audio':'✍️ Texto';
+   return `<div class="card ${isPending?'entry-card':x.status==='confirmed'?'confirmed-card':''}"><div class="top"><strong>${new Date(x.created_at).toLocaleString('es-AR')}</strong><span class="badge">${esc(statusLabel)}</span></div><p class="muted small">${kind}${media?.original_name?` · ${esc(media.original_name)}`:''}</p><p>${esc(x.raw_text||x.transcript||'Sin nota escrita')}</p>${isPending?`<div class="entry-actions"><button onclick="openReview('${x.id}')">Revisar y confirmar</button><button class="secondary" onclick="rejectEntry('${x.id}')">Descartar</button></div>`:''}</div>`
  }).join(''):'<div class="card"><p class="muted">Todavía no hay entradas.</p></div>';
  fillVehicles();
 }
@@ -185,6 +194,72 @@ function inferEntry(text){
  const yesterday=/\bayer\b/i.test(text); const d=new Date(); if(yesterday)d.setDate(d.getDate()-1);
  return {vehicle_id:vehicle?.id||'',event_date:d.toISOString().slice(0,10),odometer_km:km,title:title||'Mantenimiento',description:text,total_cost:0,currency:'ARS',workshop:''};
 }
+
+let mediaRecorder=null,recordedChunks=[],recordingStream=null;
+
+function setMediaStatus(text,bad=false){
+ const el=$('mediaStatus'); el.textContent=text||''; el.style.color=bad?'#b91c1c':'';
+}
+function safeFileName(name='archivo'){
+ return name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]+/g,'-').slice(-100);
+}
+async function uploadMediaEntry(file,inputType){
+ if(!session?.user||!fleetId){alert('Primero iniciá sesión.');return}
+ if(file.size>20*1024*1024){alert('El archivo supera el límite de 20 MB.');return}
+ const note=$('assistantText').value.trim();
+ setMediaStatus('Subiendo archivo de forma privada…');
+ const ext=(file.name.split('.').pop()|| (inputType==='audio'?'webm':'jpg')).toLowerCase();
+ const path=`${session.user.id}/${fleetId}/assistant/${crypto.randomUUID()}.${ext}`;
+ const {error:uploadError}=await supabase.storage.from('fleet-documents').upload(path,file,{contentType:file.type,upsert:false});
+ if(uploadError){setMediaStatus(uploadError.message,true);return}
+ const extracted=inferEntry(note|| (inputType==='photo'?'Registro mediante fotografía':'Registro mediante audio'));
+ extracted.media={object_path:path,original_name:safeFileName(file.name||`${inputType}.${ext}`),mime_type:file.type||null,size_bytes:file.size,source:inputType};
+ const raw=note|| (inputType==='photo'?'Foto adjunta pendiente de revisión.':'Audio adjunto pendiente de transcripción y revisión.');
+ const {data,error}=await supabase.from('assistant_entries').insert({
+  fleet_id:fleetId,vehicle_id:extracted.vehicle_id||null,input_type:inputType,raw_text:raw,extracted_data:extracted,status:'pending_confirmation'
+ }).select().single();
+ if(error){
+  await supabase.storage.from('fleet-documents').remove([path]);
+  setMediaStatus(error.message,true); return;
+ }
+ $('assistantText').value=''; setMediaStatus(inputType==='photo'?'Foto guardada. Revisá los datos detectados.':'Audio guardado. Podés completar o corregir su descripción.');
+ await loadAll(); openReview(data.id);
+}
+$('photoInput').addEventListener('change',async e=>{
+ const file=e.target.files?.[0]; if(file)await uploadMediaEntry(file,'photo'); e.target.value='';
+});
+window.toggleRecording=async()=>{
+ const btn=$('recordBtn');
+ if(mediaRecorder?.state==='recording'){
+  mediaRecorder.stop(); btn.textContent='🎤 Grabar audio'; btn.classList.remove('recording'); return;
+ }
+ if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){alert('Este navegador no permite grabar audio.');return}
+ try{
+  recordingStream=await navigator.mediaDevices.getUserMedia({audio:true});
+  const preferred=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(t=>MediaRecorder.isTypeSupported(t))||'';
+  mediaRecorder=new MediaRecorder(recordingStream,preferred?{mimeType:preferred}:undefined);
+  recordedChunks=[];
+  mediaRecorder.ondataavailable=e=>{if(e.data.size)recordedChunks.push(e.data)};
+  mediaRecorder.onstop=async()=>{
+   recordingStream?.getTracks().forEach(t=>t.stop());
+   const mime=mediaRecorder.mimeType||'audio/webm';
+   const ext=mime.includes('mp4')?'m4a':'webm';
+   const blob=new Blob(recordedChunks,{type:mime});
+   const file=new File([blob],`audio-${new Date().toISOString().replace(/[:.]/g,'-')}.${ext}`,{type:mime});
+   await uploadMediaEntry(file,'audio');
+  };
+  mediaRecorder.start(); btn.textContent='⏹ Detener grabación'; btn.classList.add('recording'); setMediaStatus('Grabando… tocá nuevamente para detener.');
+ }catch(err){setMediaStatus('No se pudo acceder al micrófono: '+err.message,true)}
+};
+async function renderEntryMedia(entry){
+ const box=$('rMediaPreview'); box.innerHTML='';
+ const media=entry.extracted_data?.media; if(!media?.object_path)return;
+ const {data,error}=await supabase.storage.from('fleet-documents').createSignedUrl(media.object_path,3600);
+ if(error){box.innerHTML=`<div class="notice error">${esc(error.message)}</div>`;return}
+ if(String(media.mime_type||'').startsWith('image/'))box.innerHTML=`<div class="media-preview"><img src="${data.signedUrl}" alt="Foto adjunta"><p class="muted small">${esc(media.original_name||'Foto')}</p></div>`;
+ else if(String(media.mime_type||'').startsWith('audio/'))box.innerHTML=`<div class="media-preview"><audio controls src="${data.signedUrl}"></audio><p class="muted small">${esc(media.original_name||'Audio')}</p></div>`;
+}
+
 window.saveAssistantEntry=async()=>{
  const text=$('assistantText').value.trim(); if(!text)return;
  const btn=$('assistantSaveBtn'); btn.disabled=true; btn.textContent='Interpretando…';
@@ -202,7 +277,7 @@ window.openReview=id=>{
  $('rDate').value=data.event_date||new Date().toISOString().slice(0,10); $('rKm').value=data.odometer_km||'';
  $('rTitle').value=data.title||'Mantenimiento'; $('rDescription').value=data.description||entry.raw_text||'';
  $('rCost').value=data.total_cost||''; $('rCurrency').value=data.currency||'ARS'; $('rWorkshop').value=data.workshop||'';
- reviewDialog.showModal();
+ reviewDialog.showModal(); renderEntryMedia(entry);
 };
 window.rejectEntry=async id=>{if(!confirm('¿Descartar esta entrada?'))return;const r=await supabase.from('assistant_entries').update({status:'rejected'}).eq('id',id);if(r.error)alert(r.error.message);else await loadAll()};
 window.rejectCurrentEntry=()=>{const id=$('rEntryId').value;reviewDialog.close();rejectEntry(id)};
@@ -212,7 +287,13 @@ $('reviewForm').onsubmit=async e=>{
  const event={vehicle_id:$('rVehicle').value,event_date:$('rDate').value,odometer_km:Number($('rKm').value)||null,title:$('rTitle').value.trim(),description:$('rDescription').value.trim(),total_cost:Number($('rCost').value)||0,currency:$('rCurrency').value.trim()||'ARS',workshop:$('rWorkshop').value.trim(),status:'confirmed',source:'assistant',raw_input:$('rRawText').textContent};
  const {data,error}=await supabase.from('maintenance_events').insert(event).select().single();
  if(error){alert(error.message);return}
- const extracted={...event}; delete extracted.status; delete extracted.source; delete extracted.raw_input;
+ const originalEntry=assistantData.find(x=>x.id===entryId);
+ const media=originalEntry?.extracted_data?.media;
+ if(media?.object_path){
+  const attach=await supabase.from('attachments').insert({vehicle_id:event.vehicle_id,event_id:data.id,object_path:media.object_path,original_name:media.original_name||null,mime_type:media.mime_type||null,size_bytes:media.size_bytes||null,source:media.source||originalEntry.input_type||'document'});
+  if(attach.error){alert('El mantenimiento se guardó, pero no se pudo vincular el archivo: '+attach.error.message)}
+ }
+ const extracted={...event,...(media?{media}: {})}; delete extracted.status; delete extracted.source; delete extracted.raw_input;
  const update=await supabase.from('assistant_entries').update({vehicle_id:event.vehicle_id,extracted_data:extracted,status:'confirmed',resulting_event_id:data.id}).eq('id',entryId);
  if(update.error){alert(update.error.message);return}
  if(event.odometer_km){const v=vehiclesData.find(x=>x.id===event.vehicle_id);if(!v||Number(event.odometer_km)>Number(v.current_odometer_km||0))await supabase.from('vehicles').update({current_odometer_km:event.odometer_km}).eq('id',event.vehicle_id)}
