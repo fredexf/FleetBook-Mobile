@@ -1,32 +1,23 @@
 {
   "id": "./",
-  "name": "FleetBook Cloud v3",
+  "name": "FleetBook Local",
   "short_name": "FleetBook",
-  "description": "Gestión inteligente y confirmación de mantenimientos de flota",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f8fafc",
   "theme_color": "#0f172a",
-  "prefer_related_applications": false,
   "icons": [
     {
       "src": "./icon-192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/png"
     },
     {
       "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "./icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ]
 }
